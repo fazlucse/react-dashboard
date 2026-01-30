@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Signet Dashboard - Wave Animation</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+        }
+        #root {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Wave Animation Keyframes */
+        @keyframes waveSlideIn {
+          0% {
+            clip-path: circle(0% at 0% 50%);
+            opacity: 0;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            clip-path: circle(150% at 0% 50%);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes waveSlideOut {
+          0% {
+            clip-path: circle(150% at 0% 50%);
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+          100% {
+            clip-path: circle(0% at 0% 50%);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes menuItemFadeIn {
+          from {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes menuItemFadeOut {
+          from {
+            opacity: 1;
+            transform: translateX(0);
+          }
+          to {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+        }
+        
+        .sidebar-wave-in {
+          animation: waveSlideIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        
+        .sidebar-wave-out {
+          animation: waveSlideOut 0.5s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        }
+        
+        .menu-item-enter {
+          animation: menuItemFadeIn 0.4s ease forwards;
+        }
+        
+        .menu-item-exit {
+          animation: menuItemFadeOut 0.3s ease forwards;
+        }
+        
+        /* Modal Animations - Scale from Center */
+        @keyframes modalSlideIn {
+          from { 
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.3);
+          }
+          to { 
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+        }
+        
+        @keyframes modalSlideInMobile {
+          from { 
+            opacity: 0;
+            transform: scale(0.3);
+            top: 50%;
+            left: 50%;
+          }
+          to { 
+            opacity: 1;
+            transform: scale(1);
+            top: 0;
+            left: 0;
+          }
+        }
+        
+        @keyframes modalSlideOut {
+          from { 
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          to { 
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.3);
+          }
+        }
+        
+        @keyframes modalSlideOutMobile {
+          from { 
+            opacity: 1;
+            transform: scale(1);
+            top: 0;
+            left: 0;
+          }
+          to { 
+            opacity: 0;
+            transform: scale(0.3);
+            top: 50%;
+            left: 50%;
+          }
+        }
+        
+        @keyframes backdropFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes backdropFadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+        
+        .backdrop-entering {
+          animation: backdropFadeIn 0.35s ease forwards;
+        }
+        
+        .backdrop-exiting {
+          animation: backdropFadeOut 0.35s ease forwards;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideInFromLeft {
+          from { 
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        .modal-entering {
+          animation: modalSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+          animation-fill-mode: none;
+        }
+        
+        .modal-entering-mobile {
+          animation: modalSlideInMobile 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+          animation-fill-mode: none;
+        }
+        
+        .modal-exiting {
+          animation: modalSlideOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        .modal-exiting-mobile {
+          animation: modalSlideOutMobile 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Reusable Window Header Component
+        const WindowHeader = ({ title, isMobile, onMinimize, onMaximize, onClose }) => {
+          return (
+            <div style={{
+              background: 'linear-gradient(135deg, #0062AF 0%, #004a85 100%)',
+              padding: isMobile ? '12px 15px' : '14px 20px',
+              borderBottom: '2px solid #003d6b',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}>
+              <span style={{ 
+                fontWeight: 'bold',
+                fontSize: isMobile ? '0.9rem' : '1.05rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '60%',
+                color: 'white',
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+              }}>{title}</span>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {!isMobile && onMinimize && (
+                  <button 
+                    onClick={onMinimize}
+                    style={{
+                      border: 'none',
+                      background: 'rgba(255,255,255,0.2)',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      color: 'white',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                  >_</button>
+                )}
+                {onMaximize && (
+                  <button 
+                    onClick={onMaximize}
+                    style={{
+                      border: 'none',
+                      background: 'rgba(255,255,255,0.2)',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      color: 'white',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                  >▢</button>
+                )}
+                <button 
+                  onClick={onClose}
+                  style={{
+                    border: 'none',
+                    background: '#dc3545',
+                    color: 'white',
+                    borderRadius: '4px',
+                    padding: '6px 12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    transition: 'background 0.2s',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#c82333'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#dc3545'}
+                >×</button>
+              </div>
+            </div>
+          );
+        };
+
+        // Window Footer Component
+        const WindowFooter = ({ isMobile, onAction1, onAction2, windowId }) => {
+          return (
+            <div style={{
+              background: '#f8f9fa',
+              padding: isMobile ? '12px 15px' : '14px 20px',
+              borderTop: '1px solid #dee2e6',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              boxShadow: '0 -2px 4px rgba(0,0,0,0.05)'
+            }}>
+              <div style={{ 
+                fontSize: '0.75rem', 
+                color: '#6c757d',
+                fontFamily: 'monospace'
+              }}>
+                ID: {windowId.substring(0, 12)}...
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={onAction1}
+                  style={{
+                    padding: isMobile ? '6px 12px' : '8px 16px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: isMobile ? '0.8rem' : '0.85rem',
+                    fontWeight: '500',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#218838'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={onAction2}
+                  style={{
+                    padding: isMobile ? '6px 12px' : '8px 16px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: isMobile ? '0.8rem' : '0.85rem',
+                    fontWeight: '500',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#5a6268'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6c757d'}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          );
+        };
+
+        // Reusable Modal Window Component with animations
+        const ModalWindow = ({ id, title, children, zIndex, onClose, onResize, onBringToFront, size, isMobile, windowIndex, totalWindows, isTopWindow, isExiting }) => {
+          let sizeStyle = {};
+          
+          if (size === 'maximize') {
+            // 100% width and height - full screen (no transform needed)
+            sizeStyle = {
+              width: '100%',
+              height: '100%',
+              top: 0,
+              left: 0,
+              transform: 'none',
+              borderRadius: 0
+            };
+          } else if (size === 'minimize') {
+            // Minimize state - 50% for both mobile and desktop
+            if (isMobile) {
+              sizeStyle = {
+                width: '100%',
+                height: '50%',
+                top: 0,
+                left: 0,
+                transform: 'none',
+                borderRadius: 0
+              };
+            } else {
+              // Desktop: 50% width and height, centered
+              sizeStyle = {
+                width: '50%',
+                height: '50%',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                borderRadius: '12px'
+              };
+            }
+          } else {
+            // Default size (based on window index) - centered
+            const sizePercentage = Math.max(70, 100 - (windowIndex * 5));
+            
+            sizeStyle = {
+              width: isMobile ? '100%' : `${sizePercentage}%`,
+              height: isMobile ? '100%' : `${sizePercentage}%`,
+              top: isMobile ? 0 : '50%',
+              left: isMobile ? 0 : '50%',
+              transform: isMobile ? 'none' : 'translate(-50%, -50%)',
+              borderRadius: isMobile ? 0 : '12px'
+            };
+          }
+
+          const animationClass = isExiting 
+            ? (isMobile ? 'modal-exiting-mobile' : 'modal-exiting')
+            : (isMobile ? 'modal-entering-mobile' : 'modal-entering');
+
+          return (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              className={animationClass}
+              style={{
+                position: 'fixed',
+                background: 'white',
+                border: '2px solid #0062AF',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+                display: 'flex',
+                flexDirection: 'column',
+                pointerEvents: 'all',
+                overflow: 'hidden',
+                zIndex: zIndex,
+                opacity: isTopWindow ? 1 : 0.7,
+                filter: isTopWindow ? 'none' : 'blur(1px)',
+                transition: isExiting ? 'none' : 'all 0.3s ease',
+                animationFillMode: isExiting ? 'forwards' : 'none',
+                ...sizeStyle
+              }}
+            >
+              <WindowHeader
+                title={title}
+                isMobile={isMobile}
+                onMinimize={() => onResize('min')}
+                onMaximize={() => onResize('max')}
+                onClose={onClose}
+              />
+
+              <div 
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  onBringToFront();
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  onBringToFront();
+                }}
+                style={{
+                  flex: 1,
+                  padding: isMobile ? '15px' : '25px',
+                  overflowY: 'auto',
+                  background: '#fff',
+                  WebkitOverflowScrolling: 'touch',
+                  pointerEvents: isTopWindow ? 'all' : 'none'
+                }}
+              >
+                {children}
+              </div>
+
+              <WindowFooter
+                isMobile={isMobile}
+                windowId={id}
+                onAction1={() => alert('Save clicked for ' + title)}
+                onAction2={onClose}
+              />
+            </div>
+          );
+        };
+
+        const SignetDashboard = () => {
+          const [sidebarOpen, setSidebarOpen] = useState(false);
+          const [sidebarClosing, setSidebarClosing] = useState(false);
+          const [ongoingExpanded, setOngoingExpanded] = useState(false);
+          const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+          const [windows, setWindows] = useState([]);
+          const [exitingWindows, setExitingWindows] = useState([]);
+          const [globalZIndex, setGlobalZIndex] = useState(4000);
+          const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+          const [activeMenu, setActiveMenu] = useState(null);
+          const [expandedCategories, setExpandedCategories] = useState({});
+          const [backdropExiting, setBackdropExiting] = useState(false);
+          const [searchQuery, setSearchQuery] = useState('');
+
+          useEffect(() => {
+            const handleResize = () => {
+              setIsMobile(window.innerWidth <= 768);
+            };
+            window.addEventListener('resize', handleResize);
+            return () => window.removeEventListener('resize', handleResize);
+          }, []);
+
+          // Multi-dimensional menu structure with labels
+          const menuStructure = [
+            {
+              id: 'dashboard',
+              icon: '📊',
+              label: 'Dashboard',
+              title: 'Dashboard Control',
+              hasLabel: true,
+              labelText: 'NEW',
+              labelColor: '#28a745',
+              data: { type: 'dashboard', stats: { users: 1234, revenue: 45678 } },
+              children: [
+                { id: 'analytics', icon: '📈', label: 'Analytics', title: 'Analytics Overview', data: { type: 'analytics' } },
+                { id: 'reports', icon: '📄', label: 'Reports', title: 'Report Center', data: { type: 'reports' } },
+                { id: 'charts', icon: '📊', label: 'Charts', title: 'Chart Builder', data: { type: 'charts' } },
+              ]
+            },
+            {
+              id: 'accounting',
+              icon: '📈',
+              label: 'Accounting',
+              title: 'Financial Ledger',
+              hasLabel: true,
+              labelText: 'HOT',
+              labelColor: '#dc3545',
+              data: { type: 'accounting', balance: 123456.78 },
+              children: [
+                { 
+                  id: 'transactions', 
+                  icon: '💰', 
+                  label: 'Transactions', 
+                  title: 'Transaction Management', 
+                  data: { type: 'transactions' },
+                  children: [
+                    { id: 'trans-income', icon: '💵', label: 'Income Transactions', title: 'Income Transactions', data: { type: 'income-trans' } },
+                    { id: 'trans-expense', icon: '💸', label: 'Expense Transactions', title: 'Expense Transactions', data: { type: 'expense-trans' } },
+                    { id: 'trans-transfer', icon: '🔄', label: 'Transfer Transactions', title: 'Transfer Transactions', data: { type: 'transfer-trans' } },
+                    { id: 'trans-recurring', icon: '🔁', label: 'Recurring Transactions', title: 'Recurring Transactions', data: { type: 'recurring-trans' } },
+                  ]
+                },
+                { id: 'invoices', icon: '🧾', label: 'Invoices', title: 'Invoice Management', data: { type: 'invoices' } },
+                { id: 'expenses', icon: '💸', label: 'Expenses', title: 'Expense Tracking', data: { type: 'expenses' } },
+              ]
+            },
+            {
+              id: 'support',
+              icon: '🎧',
+              label: 'Support Center',
+              title: 'Customer Support',
+              data: { type: 'support', tickets: 42 },
+              children: [
+                { id: 'tickets', icon: '🎫', label: 'Tickets', title: 'Support Tickets', data: { type: 'tickets' } },
+                { id: 'chat', icon: '💬', label: 'Live Chat', title: 'Chat Support', data: { type: 'chat' } },
+                { id: 'knowledge', icon: '📚', label: 'Knowledge Base', title: 'Knowledge Base', data: { type: 'knowledge' } },
+              ]
+            },
+            {
+              id: 'documents',
+              icon: '📁',
+              label: 'Documents',
+              title: 'Document Manager',
+              hasLabel: true,
+              labelText: 'PRO',
+              labelColor: '#ffc107',
+              data: { type: 'documents', count: 156 },
+              children: [
+                { id: 'files', icon: '📄', label: 'Files', title: 'File Browser', data: { type: 'files' } },
+                { id: 'templates', icon: '📋', label: 'Templates', title: 'Document Templates', data: { type: 'templates' } },
+                { id: 'archive', icon: '🗄️', label: 'Archive', title: 'Document Archive', data: { type: 'archive' } },
+              ]
+            },
+            {
+              id: 'users',
+              icon: '👥',
+              label: 'Users',
+              title: 'User Management',
+              data: { type: 'users', total: 890 },
+              children: [
+                { id: 'list', icon: '📋', label: 'User List', title: 'All Users', data: { type: 'userlist' } },
+                { id: 'roles', icon: '🎭', label: 'Roles', title: 'Role Management', data: { type: 'roles' } },
+                { id: 'permissions', icon: '🔐', label: 'Permissions', title: 'Permission Settings', data: { type: 'permissions' } },
+              ]
+            },
+            {
+              id: 'settings',
+              icon: '⚙️',
+              label: 'Settings',
+              title: 'System Settings',
+              data: { type: 'settings' },
+              children: [
+                { id: 'general', icon: '🔧', label: 'General', title: 'General Settings', data: { type: 'general' } },
+                { id: 'security', icon: '🔒', label: 'Security', title: 'Security Settings', data: { type: 'security' } },
+                { id: 'integrations', icon: '🔌', label: 'Integrations', title: 'Integration Settings', data: { type: 'integrations' } },
+              ]
+            },
+          ];
+
+          const bottomNavItems = [
+            { code: 'MS', label: 'MARGIN SHEET', data: { module: 'margin', value: 12.5 } },
+            { code: 'PC', label: 'PURCHASE', data: { module: 'purchase', orders: 23 } },
+            { code: 'UAC', label: 'ACCESS', data: { module: 'access', level: 'admin' } },
+            { code: 'MN', label: 'MENU', data: { module: 'menu' } },
+            { code: 'OR', label: 'ORDER', data: { module: 'order', pending: 15 } },
+            { code: 'CI', label: 'INVOICE', data: { module: 'invoice', count: 34 } },
+            { code: 'BA', label: 'BANK', data: { module: 'bank', balance: 98765.43 } },
+          ];
+
+          const actionButtons = [
+            { icon: '📅', color: '#0062AF', label: 'Calendar', data: { events: 5, today: '2026-01-28' } },
+            { icon: '📎', color: '#0062AF', label: 'Attachments', data: { files: 12, size: '45MB' } },
+            { icon: '📶', color: '#0062AF', label: 'Network', data: { status: 'online', speed: '100Mbps' } },
+            { icon: '🎧', color: '#28a745', label: 'Support', data: { available: true, queue: 3 } },
+          ];
+
+          // Recursive function to filter menu items based on search
+          const filterMenuItems = (items, query) => {
+            if (!query.trim()) return items;
+            
+            const lowerQuery = query.toLowerCase();
+            
+            return items.map(item => {
+              const labelMatches = item.label.toLowerCase().includes(lowerQuery);
+              const filteredChildren = item.children ? filterMenuItems(item.children, query) : [];
+              
+              if (labelMatches || filteredChildren.length > 0) {
+                return {
+                  ...item,
+                  children: labelMatches ? item.children : filteredChildren
+                };
+              }
+              return null;
+            }).filter(Boolean);
+          };
+
+          // Toggle category expansion
+          const toggleCategory = (categoryId) => {
+            setExpandedCategories(prev => ({
+              ...prev,
+              [categoryId]: !prev[categoryId]
+            }));
+          };
+
+          // Handle sidebar close with animation
+          const handleCloseSidebar = () => {
+            setSidebarClosing(true);
+            setTimeout(() => {
+              setSidebarOpen(false);
+              setSidebarClosing(false);
+              setSearchQuery('');
+              setExpandedCategories({});
+            }, 500);
+          };
+
+          // Create window with dynamic content
+          const createWindow = (title, data = {}, menuId = null, fromBottomMenu = false) => {
+            const newWindow = {
+              id: `win-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              title,
+              data,
+              size: 'default',
+              zIndex: globalZIndex + 1,
+              menuId
+            };
+            setWindows([...windows, newWindow]);
+            setGlobalZIndex(globalZIndex + 1);
+            
+            // Only close sidebar if not from bottom menu
+            if (!fromBottomMenu) {
+              handleCloseSidebar();
+            }
+            
+            setMobileMenuOpen(false);
+            setActiveMenu(menuId);
+            setBackdropExiting(false);
+          };
+
+          const closeWindow = (id) => {
+            const closedWindow = windows.find(w => w.id === id);
+            
+            setExitingWindows([...exitingWindows, id]);
+            
+            if (windows.length === 1) {
+              setBackdropExiting(true);
+            }
+            
+            setTimeout(() => {
+              setWindows(prev => prev.filter(w => w.id !== id));
+              setExitingWindows(prev => prev.filter(wid => wid !== id));
+              
+              if (closedWindow && windows.length > 1) {
+                const remainingWindows = windows.filter(w => w.id !== id);
+                const topWindow = remainingWindows.reduce((max, w) => 
+                  w.zIndex > max.zIndex ? w : max, remainingWindows[0]
+                );
+                setActiveMenu(topWindow.menuId);
+              } else if (windows.length === 1) {
+                setActiveMenu(null);
+                setBackdropExiting(false);
+              }
+            }, 350);
+          };
+
+          const resizeWindow = (id, mode) => {
+            setWindows(windows.map(w => {
+              if (w.id === id) {
+                if (mode === 'max') {
+                  // Maximize button: toggle between current state and 100%
+                  if (w.size === 'maximize') {
+                    // If already maximized, restore to previous size
+                    return { ...w, size: w.previousSize || 'default' };
+                  } else {
+                    // If not maximized, save current size and maximize
+                    return { ...w, size: 'maximize', previousSize: w.size };
+                  }
+                } else if (mode === 'min') {
+                  // Minimize button: toggle between minimize and previous state
+                  if (w.size === 'minimize') {
+                    // If already minimized, restore to previous size
+                    return { ...w, size: w.previousSize || 'default' };
+                  } else {
+                    // If not minimized, save current size and minimize
+                    return { ...w, size: 'minimize', previousSize: w.size };
+                  }
+                }
+              }
+              return w;
+            }));
+          };
+
+          const bringToFront = (id) => {
+            const newZIndex = globalZIndex + 1;
+            const window = windows.find(w => w.id === id);
+            setWindows(windows.map(w => w.id === id ? { ...w, zIndex: newZIndex } : w));
+            setGlobalZIndex(newZIndex);
+            if (window) {
+              setActiveMenu(window.menuId);
+            }
+          };
+
+          // Recursive render menu items with nested children
+          const renderMenuItem = (item, itemIdx, depth = 0) => {
+            const isActive = activeMenu === item.id;
+            const isExpanded = expandedCategories[item.id];
+            const hasActiveChild = item.children?.some(child => {
+              if (activeMenu === child.id) return true;
+              if (child.children) {
+                return child.children.some(subChild => activeMenu === subChild.id);
+              }
+              return false;
+            });
+            
+            const paddingLeft = 20 + (depth * 20);
+            
+            return (
+              <li 
+                key={item.id} 
+                className={sidebarClosing ? 'menu-item-exit' : 'menu-item-enter'}
+                style={{ 
+                  overflow: 'hidden',
+                  animationDelay: sidebarClosing ? `${itemIdx * 0.03}s` : `${itemIdx * 0.05 + 0.2}s`
+                }}
+              >
+                <div
+                  onClick={() => {
+                    if (item.children) {
+                      toggleCategory(item.id);
+                    } else {
+                      createWindow(item.title, item.data, item.id);
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: `${depth === 0 ? '18px' : '12px'} ${paddingLeft}px`,
+                    borderBottom: depth === 0 ? '1px solid #eee' : '1px solid #f0f0f0',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    fontSize: depth === 0 ? '0.95rem' : '0.85rem',
+                    backgroundColor: hasActiveChild ? '#1976d2' : (isActive ? '#e3f2fd' : 'transparent'),
+                    color: hasActiveChild ? 'white' : 'inherit',
+                    fontWeight: hasActiveChild ? 'bold' : 'normal',
+                    transform: 'translateX(0)',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!hasActiveChild && !isActive) {
+                      e.currentTarget.style.backgroundColor = depth === 0 ? '#f8f9fa' : '#f5f5f5';
+                      e.currentTarget.style.transform = 'translateX(5px)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!hasActiveChild && !isActive) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.transform = 'translateX(0)';
+                    }
+                  }}
+                >
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ marginRight: '2px', transition: 'transform 0.3s ease' }}>{item.icon}</span>
+                    {item.label}
+                    {item.hasLabel && (
+                      <span style={{
+                        fontSize: '0.65rem',
+                        padding: '2px 6px',
+                        borderRadius: '3px',
+                        backgroundColor: item.labelColor,
+                        color: 'white',
+                        fontWeight: 'bold',
+                        marginLeft: '5px',
+                        textTransform: 'uppercase'
+                      }}>
+                        {item.labelText}
+                      </span>
+                    )}
+                  </div>
+                  {item.children && (
+                    <span
+                      style={{
+                        fontSize: '1.2rem',
+                        padding: '0 5px',
+                        color: hasActiveChild ? 'white' : '#0062AF',
+                        fontWeight: 'bold',
+                        transition: 'transform 0.3s ease',
+                        display: 'inline-block',
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                      }}
+                    >
+                      {isExpanded ? '−' : '+'}
+                    </span>
+                  )}
+                </div>
+                
+                {item.children && (
+                  <div
+                    style={{
+                      maxHeight: isExpanded ? '2000px' : '0',
+                      overflow: 'hidden',
+                      transition: 'max-height 0.5s ease, opacity 0.3s ease',
+                      opacity: isExpanded ? 1 : 0,
+                      background: depth === 0 ? '#f8f9fa' : '#fafafa'
+                    }}
+                  >
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {item.children.map((child, childIdx) => renderMenuItem(child, childIdx, depth + 1))}
+                    </ul>
+                  </div>
+                )}
+              </li>
+            );
+          };
+
+          // Different content templates based on window type
+          const renderWindowContent = (win) => {
+            const { data, title, id } = win;
+
+            if (data?.type === 'dashboard') {
+              return (
+                <>
+                  <h5 style={{ fontSize: isMobile ? '1rem' : '1.2rem', marginTop: 0 }}>📊 {title}</h5>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                    <div style={{ background: '#e3f2fd', padding: '20px', borderRadius: '8px' }}>
+                      <h6 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>Total Users</h6>
+                      <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>{data.stats?.users || 0}</p>
+                    </div>
+                    <div style={{ background: '#e8f5e9', padding: '20px', borderRadius: '8px' }}>
+                      <h6 style={{ margin: '0 0 10px 0', color: '#388e3c' }}>Revenue</h6>
+                      <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>${data.stats?.revenue || 0}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => createWindow(`${title} - Analytics`, { parent: id, type: 'analytics' })}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: '#0062AF',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    View Detailed Analytics
+                  </button>
+                </>
+              );
+            }
+
+            if (data?.type === 'support') {
+              return (
+                <>
+                  <h5 style={{ fontSize: isMobile ? '1rem' : '1.2rem', marginTop: 0 }}>🎧 {title}</h5>
+                  <div style={{ background: '#fff3e0', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+                    <h6 style={{ margin: '0 0 10px 0', color: '#f57c00' }}>Active Tickets</h6>
+                    <p style={{ fontSize: '2.5rem', fontWeight: 'bold', margin: 0 }}>{data.tickets || 0}</p>
+                  </div>
+                  <div style={{ background: '#f5f5f5', padding: '15px', borderRadius: '8px' }}>
+                    <p style={{ margin: 0, fontSize: '0.9rem' }}>Recent ticket: #TK-{Math.floor(Math.random() * 10000)}</p>
+                    <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: '#666' }}>Status: Pending Review</p>
+                  </div>
+                </>
+              );
+            }
+
+            if (data?.type === 'accounting') {
+              return (
+                <>
+                  <h5 style={{ fontSize: isMobile ? '1rem' : '1.2rem', marginTop: 0 }}>📈 {title}</h5>
+                  <div style={{ background: '#f3e5f5', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+                    <h6 style={{ margin: '0 0 10px 0', color: '#7b1fa2' }}>Current Balance</h6>
+                    <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0, color: '#4caf50' }}>
+                      ${data.balance?.toLocaleString() || '0.00'}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button style={{ padding: '8px 16px', background: '#0062AF', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                      View Transactions
+                    </button>
+                    <button style={{ padding: '8px 16px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                      Generate Report
+                    </button>
+                  </div>
+                </>
+              );
+            }
+
+            return (
+              <>
+                <h5 style={{ fontSize: isMobile ? '1rem' : '1.2rem', marginTop: 0 }}>{title}</h5>
+                <p style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', color: '#666' }}>
+                  Window ID: {id}
+                </p>
+                
+                {data && Object.keys(data).length > 0 && (
+                  <div style={{
+                    background: '#f8f9fa',
+                    padding: '15px',
+                    borderRadius: '8px',
+                    marginTop: '15px',
+                    marginBottom: '15px'
+                  }}>
+                    <h6 style={{ marginTop: 0, color: '#0062AF' }}>Window Data:</h6>
+                    {Object.entries(data).map(([key, value]) => (
+                      <div key={key} style={{ marginBottom: '8px', fontSize: isMobile ? '0.85rem' : '0.9rem' }}>
+                        <strong>{key}:</strong> {typeof value === 'object' ? JSON.stringify(value) : value}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <hr style={{ margin: '15px 0' }} />
+                
+                <div style={{
+                  minHeight: isMobile ? '200px' : '400px',
+                  background: '#fafafa',
+                  border: '1px dashed #ddd',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  padding: '20px',
+                  borderRadius: '8px'
+                }}>
+                  <p style={{ fontSize: isMobile ? '0.9rem' : '1rem', marginBottom: '10px' }}>Content area for {title}</p>
+                  <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '15px' }}>Window: {windows.findIndex(w => w.id === id) + 1} / {windows.length}</p>
+                  
+                  <button
+                    onClick={() => createWindow(`${title} - Child`, { parent: id, timestamp: new Date().toISOString() })}
+                    style={{
+                      marginTop: '15px',
+                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      backgroundColor: '#0062AF',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                      fontSize: isMobile ? '0.85rem' : '0.95rem'
+                    }}
+                  >
+                    Open Child Window
+                  </button>
+                </div>
+              </>
+            );
+          };
+
+          const filteredMenu = filterMenuItems(menuStructure, searchQuery);
+
+          return (
+            <div style={{ 
+              backgroundColor: '#f8f9fa', 
+              overflow: 'hidden', 
+              fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+              height: '100vh',
+              width: '100vw',
+              margin: 0,
+              position: 'fixed',
+              top: 0,
+              left: 0
+            }}>
+              {/* Navbar */}
+              <nav style={{
+                height: '60px',
+                background: '#fff',
+                zIndex: 1060,
+                borderBottom: '1px solid #eee',
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 15px',
+              }}>
+                <button 
+                  onClick={() => sidebarOpen ? handleCloseSidebar() : setSidebarOpen(true)}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    padding: '8px',
+                    marginRight: '10px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
+                    <path d="M2 3h12M2 8h12M2 13h12" stroke="#0062AF" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                </button>
+                <a style={{ 
+                  fontWeight: 'bold', 
+                  color: '#0062AF', 
+                  fontSize: isMobile ? '1.2rem' : '1.5rem',
+                  textDecoration: 'none',
+                  cursor: 'pointer'
+                }}>SIGNET</a>
+                <div style={{ marginLeft: 'auto' }}>
+                  <div style={{
+                    background: '#6c757d',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px'
+                  }}></div>
+                </div>
+              </nav>
+
+              {/* Sidebar with Wave Animation */}
+              {(sidebarOpen || sidebarClosing) && (
+                <>
+                  <div 
+                    onClick={handleCloseSidebar}
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: 'rgba(0,0,0,0.5)',
+                      zIndex: 1070,
+                      animation: sidebarClosing ? 'backdropFadeOut 0.5s ease forwards' : 'backdropFadeIn 0.6s ease forwards'
+                    }}
+                  />
+                  <div 
+                    className={sidebarClosing ? 'sidebar-wave-out' : 'sidebar-wave-in'}
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      width: isMobile ? '280px' : '320px',
+                      height: '100%',
+                      backgroundColor: '#fff',
+                      zIndex: 1071,
+                      boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}>
+                    {/* Search Bar in Header */}
+                    <div style={{
+                      padding: '15px',
+                      borderBottom: '1px solid #eee',
+                      background: 'linear-gradient(135deg, #0062AF 0%, #004a85 100%)',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}>
+                      <input
+                        type="text"
+                        placeholder="🔍 Search menu..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{
+                          flex: 1,
+                          padding: '10px 15px',
+                          border: '2px solid white',
+                          borderRadius: '8px',
+                          fontSize: '0.9rem',
+                          outline: 'none',
+                          transition: 'all 0.3s ease',
+                          background: 'white',
+                          color: '#333'
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 255, 255, 0.3)';
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      />
+                      <button 
+                        onClick={handleCloseSidebar}
+                        style={{
+                          border: 'none',
+                          background: 'rgba(255,255,255,0.2)',
+                          color: 'white',
+                          fontSize: '1.5rem',
+                          cursor: 'pointer',
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                      >×</button>
+                    </div>
+
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, overflowY: 'auto', flex: 1 }}>
+                      {filteredMenu.length === 0 ? (
+                        <li style={{
+                          padding: '20px',
+                          textAlign: 'center',
+                          color: '#6c757d',
+                          fontSize: '0.9rem'
+                        }}>
+                          No results found
+                        </li>
+                      ) : (
+                        filteredMenu.map((item, itemIdx) => renderMenuItem(item, itemIdx, 0))
+                      )}
+                    </ul>
+                  </div>
+                </>
+              )}
+
+              {/* Ongoing Panel */}
+              <div 
+                onClick={() => !ongoingExpanded && setOngoingExpanded(true)}
+                style={{
+                  position: 'fixed',
+                  left: 0,
+                  top: ongoingExpanded ? 0 : '50%',
+                  transform: ongoingExpanded ? 'none' : 'translateY(-50%)',
+                  backgroundColor: '#0062AF',
+                  width: ongoingExpanded ? '100vw' : (isMobile ? '30px' : '35px'),
+                  height: ongoingExpanded ? '100vh' : (isMobile ? '120px' : '140px'),
+                  cursor: ongoingExpanded ? 'default' : 'pointer',
+                  display: 'flex',
+                  alignItems: ongoingExpanded ? 'flex-start' : 'center',
+                  justifyContent: ongoingExpanded ? 'flex-start' : 'center',
+                  transition: 'all 0.4s ease',
+                  zIndex: ongoingExpanded ? 1090 : 1045,
+                  borderRadius: ongoingExpanded ? 0 : '0 8px 8px 0',
+                  color: 'white',
+                  padding: ongoingExpanded ? (isMobile ? '20px' : '40px') : 0,
+                  overflowY: ongoingExpanded ? 'auto' : 'hidden'
+                }}
+              >
+                {!ongoingExpanded ? (
+                  <div style={{
+                    writingMode: 'vertical-rl',
+                    transform: 'rotate(180deg)',
+                    fontSize: isMobile ? '0.6rem' : '0.7rem',
+                    fontWeight: 'bold',
+                    pointerEvents: 'none'
+                  }}>
+                    ONGOING
+                  </div>
+                ) : (
+                  <div style={{ width: '100%' }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '20px',
+                      flexWrap: 'wrap'
+                    }}>
+                      <h2 style={{ fontSize: isMobile ? '1.3rem' : '1.8rem', margin: 0 }}>Workflow Status</h2>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOngoingExpanded(false);
+                        }}
+                        style={{
+                          border: '1px solid white',
+                          background: 'transparent',
+                          color: 'white',
+                          padding: isMobile ? '6px 12px' : '8px 16px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: isMobile ? '0.85rem' : '1rem',
+                          marginTop: isMobile ? '10px' : 0
+                        }}
+                      >
+                        Close [X]
+                      </button>
+                    </div>
+                    <p style={{ fontSize: isMobile ? '0.9rem' : '1rem' }}>Your current active operations will be listed here.</p>
+                    <div style={{ marginTop: '20px' }}>
+                      <h5 style={{ fontSize: isMobile ? '1rem' : '1.1rem' }}>Active Windows: {windows.length}</h5>
+                      <ul style={{ paddingLeft: '20px' }}>
+                        {windows.map(w => (
+                          <li key={w.id} style={{ marginBottom: '8px', fontSize: isMobile ? '0.85rem' : '0.95rem' }}>
+                            {w.title}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Backdrop with animation */}
+              {windows.length > 0 && (
+                <div 
+                  className={backdropExiting ? 'backdrop-exiting' : 'backdrop-entering'}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    zIndex: 2999,
+                    pointerEvents: 'all',
+                    cursor: 'not-allowed'
+                  }} 
+                />
+              )}
+
+              {/* Popup Windows Container */}
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: 3000
+              }}>
+                {windows.map((win, index) => {
+                  const isTopWindow = windows.every(w => w.id === win.id || w.zIndex <= win.zIndex);
+                  const isExiting = exitingWindows.includes(win.id);
+                  
+                  return (
+                    <React.Fragment key={win.id}>
+                      {!isTopWindow && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                            zIndex: win.zIndex,
+                            pointerEvents: 'all',
+                            cursor: 'not-allowed'
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        />
+                      )}
+                      
+                      <ModalWindow
+                        id={win.id}
+                        title={win.title}
+                        zIndex={win.zIndex + 1}
+                        size={win.size}
+                        isMobile={isMobile}
+                        windowIndex={index}
+                        totalWindows={windows.length}
+                        isTopWindow={isTopWindow}
+                        isExiting={isExiting}
+                        onClose={() => closeWindow(win.id)}
+                        onResize={(mode) => resizeWindow(win.id, mode)}
+                        onBringToFront={() => bringToFront(win.id)}
+                      >
+                        {renderWindowContent(win)}
+                      </ModalWindow>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+              {/* Main Content */}
+              <div style={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                paddingTop: '60px',
+                paddingBottom: isMobile ? '95px' : '95px',
+                paddingLeft: '20px',
+                paddingRight: '20px'
+              }}>
+                <h1 style={{
+                  fontSize: isMobile ? '2.5rem' : '6rem',
+                  fontWeight: 'bold',
+                  color: '#0062AF',
+                  opacity: 0.25,
+                  letterSpacing: isMobile ? '4px' : '8px',
+                  margin: 0,
+                  lineHeight: 1
+                }}>SIGNET</h1>
+                <p style={{ 
+                  color: '#6c757d', 
+                  fontSize: isMobile ? '0.85rem' : '1rem',
+                  marginTop: '10px'
+                }}>Multi-Dimensional Data Portal</p>
+                {!isMobile && (
+                  <p style={{ color: '#6c757d', marginTop: '20px', fontSize: '0.9rem' }}>
+                    Click menu items to open multiple windows
+                  </p>
+                )}
+              </div>
+
+              {/* Action Menu (FAB) */}
+              <div style={{
+                position: 'fixed',
+                right: isMobile ? '15px' : '20px',
+                top: isMobile ? 'auto' : '50%',
+                bottom: isMobile ? '110px' : 'auto',
+                transform: isMobile ? 'none' : 'translateY(-50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px',
+                zIndex: 1040
+              }}>
+                {isMobile && (
+                  <button
+                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    style={{
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: '50%',
+                      backgroundColor: '#333',
+                      color: 'white',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                      fontSize: '1.4rem',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s'
+                    }}
+                  >
+                    {mobileMenuOpen ? '×' : '+'}
+                  </button>
+                )}
+
+                {(!isMobile || mobileMenuOpen) && (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    animation: isMobile ? 'fadeIn 0.3s ease' : 'none'
+                  }}>
+                    {actionButtons.map((btn, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => createWindow(btn.label, btn.data, null, true)}
+                        style={{
+                          width: isMobile ? '52px' : '48px',
+                          height: isMobile ? '52px' : '48px',
+                          borderRadius: '50%',
+                          backgroundColor: btn.color,
+                          color: 'white',
+                          border: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                          fontSize: isMobile ? '1.4rem' : '1.2rem',
+                          cursor: 'pointer',
+                          transition: '0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      >
+                        {btn.icon}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Navigation */}
+              <div style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                width: '100%',
+                zIndex: 2500,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-end'
+              }}>
+                {/* Main background bar */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  width: '100%',
+                  height: isMobile ? '65px' : '72px',
+                  backgroundColor: '#0084C7',
+                  zIndex: -1
+                }}></div>
+                
+                <div style={{
+                  display: 'flex',
+                  width: isMobile ? '100%' : 'auto',
+                  height: '100%'
+                }}>
+                  {bottomNavItems.slice(0, 7).map((item, idx,arr) => (
+                    <a
+                      key={idx}
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        createWindow(`${item.label} Module`, item.data, null, true);
+                      }}
+                      style={{
+                        flex: isMobile ? 1 : 'none',
+                        width: isMobile ? 'auto' : '140px',
+                          borderLeft:  '1px solid white',
+                          borderRight: idx === arr.length - 1 ? '1px solid white' : 'none',
+                        padding: isMobile ? '18px 8px' : '20px 15px',
+                        color: 'white',
+                        textDecoration: 'none',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: '#0084C7',
+                        transition: 'background 0.2s',
+                        minWidth: 0,
+                        gap: '4px',
+                        position: 'relative',
+                        marginBottom: isMobile ? '7px' : '0px'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#006ba8'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0084C7'}
+                    >
+                      <strong style={{ 
+                        fontSize: isMobile ? '1.5rem' : '2rem',
+                        lineHeight: 1,
+                        fontWeight: 'bold',
+                        letterSpacing: '1px',
+                        opacity: 0.9
+                      }}>{item.code}</strong>
+                      <span style={{ 
+                        fontSize: isMobile ? '0.55rem' : '0.7rem', 
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        fontWeight: '500',
+                        lineHeight: 1.2
+                      }}>
+                        {item.label}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SignetDashboard />);
+    </script>
+</body>
+</html>
