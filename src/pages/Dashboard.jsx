@@ -43,6 +43,8 @@ const renderWindowContent = (win, isMobile, windows, createWindow) => {
       return <SupportContent data={data} title={title} isMobile={isMobile} />;
     case 'accounting':
       return <AccountingContent data={data} title={title} isMobile={isMobile} />;
+    case 'person':
+      return <PersonsList />;
     default:
       return (
         <GenericContent

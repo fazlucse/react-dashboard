@@ -87,6 +87,13 @@ const menuStructure = [
     title: 'System Settings',
     data: { type: 'settings' },
     children: [
+      {
+        id: 'person',
+        icon: '👤',           // changed icon to more fitting
+        label: 'Persons',
+        title: 'Person Management',
+        data: { type: 'person' },   // ← important: this type will be used in router
+      },
       { id: 'general', icon: '🔧', label: 'General', title: 'General Settings', data: { type: 'general' } },
       { id: 'security', icon: '🔒', label: 'Security', title: 'Security Settings', data: { type: 'security' } },
       { id: 'integrations', icon: '🔌', label: 'Integrations', title: 'Integration Settings', data: { type: 'integrations' } },
